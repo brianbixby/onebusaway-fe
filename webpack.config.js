@@ -67,8 +67,8 @@ const config = {
     new LodashModuleReplacementPlugin,
     new webpack.ContextReplacementPlugin(/moment[\/\\]locale$/, /en/),
     new webpack.DefinePlugin({
-      'process.env.API_KEY': JSON.stringify(process.env.API_KEY),
-      'process.env.GOOGLE_MAP_KEY': JSON.stringify(process.env.GOOGLE_MAP_KEY)
+      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
+      'process.env.API_URL': JSON.stringify(process.env.API_URL)
     })
   ]
 };

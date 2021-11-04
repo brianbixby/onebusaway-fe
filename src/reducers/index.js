@@ -1,6 +1,8 @@
 import { combineReducers } from 'redux';
-import weather from './weather-reducers';
+import userAuth from './userAuth-reducers';
+import userProfile from './userProfile-reducers';
 
 export default combineReducers({
-  weather,
+  userAuth,
+  userProfile,
 });

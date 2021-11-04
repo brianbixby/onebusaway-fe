@@ -1,114 +1,58 @@
 import React from 'react';
-import {connect} from 'react-redux'
+import { connect } from 'react-redux';
+import { withRouter } from "react-router-dom";
 
-import WeatherForm from './../weather-form';
-import WeatherToday from './../weather-today';
-import WeatherForecast from './../weather-forecast';
-import {weatherFetchRequest, weatherFetch} from '../../actions/weather-actions.js';
-import * as util from './../../lib/util.js';
+import { tokenSignInRequest } from '../../actions/userAuth-actions.js';
+import { userProfileFetchRequest, userProfileUpdateRequest } from '../../actions/userProfile-actions.js';
+import Intro from '../intro';
+import UserProfileForm from '../userProfile-form';
+import Modal from '../helpers/modal';
+import { userValidation, logError, renderIf } from './../../lib/util.js';
 
 class LandingContainer extends React.Component {
   constructor(props){
     super(props);
+    this.state = { profileFormDisplay: true }
   }
-
   componentDidMount() {
-    console.log('If you have any questions about my code please email me @BrianBixby0@gmail.com and visit https://www.builtbybixby.us to see my latest projects.');
-    if (localStorage.timestamp && localStorage.timestamp > new Date().getTime()) {
-      this.props.weatherFetchRequest(JSON.parse(localStorage.weatherAppToken));
-    }
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        position => {
-          this.getAddress(position.coords.latitude, position.coords.longitude);
-        },
-        err => {
-          this.ipLookUp();
-        }
-      );
-    } else {
-      this.ipLookUp();
-    }
+    userValidation(this.props);
   }
-
-  ipLookUp = () => {
-    fetch('https://ipapi.co/json')
-      .then(res => res.json())
-      .then(
-        (result) => {
-            let searchString = `${result.city}, ${result.region}, ${result.country}`;
-            if (!localStorage.timestamp || localStorage.timestamp > new Date().getTime() || searchString.indexOf(localStorage.weatherAppCity) < 0)
-              this.handleSearch(searchString);
-          },
-          (error) => {
-              console.error('Request failed.  Returned status of', error);
-          }
-      );
-  };
-
-  getAddress = (lat, lon) => {
-    fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lon}&key=${process.env.GOOGLE_MAP_KEY}`)
-      .then(res => res.json())
-      .then(
-        (result) => {
-          console.log("result: ", result);
-          let searchString = result.plus_code.compound_code.substr(result.plus_code.compound_code.indexOf(" ") + 1);
-          if (!localStorage.timestamp || localStorage.timestamp > new Date().getTime() || searchString.indexOf(localStorage.weatherAppCity) < 0)
-            this.handleSearch(searchString);
-        },
-        (error) => {
-          console.error('Request failed.  Returned status of', error);
-        }
-      )
-      .catch(err => console.error(err));
+  handleProfileUpdate = profile => {
+    return this.props.userProfileUpdate(profile)
+      .catch(logError);
   };
   
-  handleSearch = city => {
-    return this.props.weatherFetch(city)
-      .catch(err => console.error(err));
-  };
-
   render() {
-    let {weather} = this.props;
-    let cloud1 = require('../../assets/cloud1.png');
-    let cloud2 = require('../../assets/cloud2.png');
-    let cloud1Style = {
-      background: `url(${cloud1}) no-repeat`,
-    }; 
-    let cloud2Style = {
-      background: `url(${cloud2}) no-repeat`,
-    };
+    let profileAction ='create';
     return (
-      <main>
-        <div className='cloud1' style={cloud1Style}></div>
-        <div className='cloud2' style={cloud2Style}></div>
-        <div className='weatherContainer'>
-          <div className='topSection'>
-            <WeatherForm onComplete={this.handleSearch}/>
-            {util.renderIf(this.props.weather.length > 0,
-              <div className='weatherTodayWrapper'>
-                <WeatherToday weather={weather[0]}/>
-              </div>
+      <section className='landingContainer container-outer'>
+        {renderIf(!this.props.userAuth,
+            <Intro />
+        )}
+        {renderIf(this.props.userAuth,
+          <div>
+            <p> Logged in! </p>
+            {renderIf(this.state.profileFormDisplay && this.props.userProfile && this.props.userProfile.lastLogin === this.props.userProfile.createdOn,
+              <Modal heading='Create Profile' close={() => { this.setState({ profileFormDisplay: false }); this.handleProfileUpdate(this.props.userProfile); }}>
+                <UserProfileForm userProfile={this.props.userProfile} onComplete={this.handleProfileUpdate} profileAction={profileAction} />
+              </Modal>
             )}
           </div>
-          {util.renderIf(this.props.weather.length > 0,
-            <div className='bottomSection'>
-              <WeatherForecast weather={weather}/>
-            </div>
-          )}
-        </div>
-      </main>
+        )}
+      </section>
     );
   }
 }
 
-let mapStateToProps = state => ({ weather: state.weather });
+let mapStateToProps = state => ({
+  userAuth: state.userAuth,
+  userProfile: state.userProfile,
+});
 
-let mapDispatchToProps = dispatch => {
-  return {
-    weatherFetch: city => dispatch(weatherFetchRequest(city)),
-    weatherFetchRequest: data => dispatch(weatherFetch(data)),
-  }
-};
+let mapDispatchToProps = dispatch => ({
+  tokenSignIn: token => dispatch(tokenSignInRequest(token)),
+  userProfileFetch: () => dispatch(userProfileFetchRequest()),
+  userProfileUpdate: profile => dispatch(userProfileUpdateRequest(profile)),
+});
 
-export default connect(mapStateToProps, mapDispatchToProps)(LandingContainer);
+export default withRouter(connect(mapStateToProps, mapDispatchToProps)(LandingContainer));
